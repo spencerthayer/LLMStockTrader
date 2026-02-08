@@ -222,5 +222,44 @@ describe("OpenAI Provider", () => {
       const call = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(call[0]).toBe("https://custom-api.example.com/chat/completions");
     });
+
+    it("includes reasoning in request body when OpenRouter and model supports it", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "openrouter/pony-alpha",
+                pricing: { prompt: "0", completion: "0" },
+                supported_parameters: ["reasoning", "response_format"],
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: "resp-1",
+            choices: [{ message: { content: "Done" } }],
+            usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 },
+          }),
+        });
+
+      const provider = createOpenAIProvider({
+        apiKey: "sk-test",
+        baseUrl: "https://openrouter.ai/api/v1",
+      });
+      await provider.complete({
+        model: "openrouter/pony-alpha",
+        messages: [{ role: "user", content: "Think step by step." }],
+        reasoning: { effort: "high" },
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const completionsCall = mockFetch.mock.calls[1] as [string, RequestInit];
+      const body = JSON.parse(completionsCall[1].body as string);
+      expect(body.reasoning).toEqual({ effort: "high" });
+    });
   });
 });

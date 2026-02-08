@@ -70,6 +70,33 @@ describe("AgentConfigSchema", () => {
       const result = AgentConfigSchema.safeParse(config);
       expect(result.success).toBe(true);
     });
+
+    it("accepts valid llm_research_reasoning_effort and llm_analyst_reasoning_effort", () => {
+      const efforts = ["none", "minimal", "low", "medium", "high", "xhigh"] as const;
+      for (const effort of efforts) {
+        const config = {
+          ...createValidConfig(),
+          llm_research_reasoning_effort: effort,
+          llm_analyst_reasoning_effort: effort,
+        };
+        const result = AgentConfigSchema.safeParse(config);
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.llm_research_reasoning_effort).toBe(effort);
+          expect(result.data.llm_analyst_reasoning_effort).toBe(effort);
+        }
+      }
+    });
+
+    it("accepts config without reasoning effort keys", () => {
+      const config = createValidConfig();
+      const result = AgentConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.llm_research_reasoning_effort).toBeUndefined();
+        expect(result.data.llm_analyst_reasoning_effort).toBeUndefined();
+      }
+    });
   });
 
   describe("invalid configurations", () => {
@@ -111,6 +138,18 @@ describe("AgentConfigSchema", () => {
 
     it("rejects empty llm_model", () => {
       const config = { ...createValidConfig(), llm_model: "" };
+      const result = AgentConfigSchema.safeParse(config);
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects invalid llm_research_reasoning_effort", () => {
+      const config = { ...createValidConfig(), llm_research_reasoning_effort: "invalid" };
+      const result = AgentConfigSchema.safeParse(config);
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects invalid llm_analyst_reasoning_effort", () => {
+      const config = { ...createValidConfig(), llm_analyst_reasoning_effort: "x-high" };
       const result = AgentConfigSchema.safeParse(config);
       expect(result.success).toBe(false);
     });

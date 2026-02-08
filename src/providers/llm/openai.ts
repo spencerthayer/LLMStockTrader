@@ -145,6 +145,11 @@ export class OpenAIProvider implements LLMProvider {
       }
     }
 
+    // OpenRouter: include reasoning effort when model supports it
+    if (this.isOpenRouter && params.reasoning != null && this.modelSupportsParam(modelId, "reasoning")) {
+      body.reasoning = params.reasoning;
+    }
+
     const maxRetries = 3;
     let lastError: Error | null = null;
 

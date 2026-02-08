@@ -258,24 +258,71 @@ export function SettingsModal({ config, onSave, onClose, cryptoAssets = [] }: Se
               </div>
             </div>
             {localConfig.llm_provider === 'openrouter' ? (
-              <div className="grid grid-cols-2 gap-4">
-                <ModelPicker
-                  models={compatibleModels}
-                  loading={modelsLoading}
-                  error={modelsError}
-                  value={localConfig.llm_model}
-                  onChange={v => handleChange('llm_model', v)}
-                  label="Research Model (cheap)"
-                />
-                <ModelPicker
-                  models={compatibleModels}
-                  loading={modelsLoading}
-                  error={modelsError}
-                  value={localConfig.llm_analyst_model || 'openai/gpt-4o'}
-                  onChange={v => handleChange('llm_analyst_model', v)}
-                  label="Analyst Model (smart)"
-                />
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <ModelPicker
+                    models={compatibleModels}
+                    loading={modelsLoading}
+                    error={modelsError}
+                    value={localConfig.llm_model}
+                    onChange={v => handleChange('llm_model', v)}
+                    label="Research Model (cheap)"
+                  />
+                  <ModelPicker
+                    models={compatibleModels}
+                    loading={modelsLoading}
+                    error={modelsError}
+                    value={localConfig.llm_analyst_model || 'openai/gpt-4o'}
+                    onChange={v => handleChange('llm_analyst_model', v)}
+                    label="Analyst Model (smart)"
+                  />
+                </div>
+                {(() => {
+                  const researchModel = compatibleModels.find(m => m.id === localConfig.llm_model)
+                  const analystModel = compatibleModels.find(m => m.id === (localConfig.llm_analyst_model || 'openai/gpt-4o'))
+                  const reasoningOptions = [
+                    { value: 'none', label: 'None' },
+                    { value: 'minimal', label: 'Minimal' },
+                    { value: 'low', label: 'Low' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'high', label: 'High' },
+                    { value: 'xhigh', label: 'XHigh' },
+                  ] as const
+                  if (!researchModel?.supportsReasoning && !analystModel?.supportsReasoning) return null
+                  return (
+                    <div className="grid grid-cols-2 gap-4">
+                      {researchModel?.supportsReasoning && (
+                        <div>
+                          <label className="hud-label block mb-1">Research reasoning effort</label>
+                          <select
+                            className="hud-input w-full"
+                            value={localConfig.llm_research_reasoning_effort ?? 'none'}
+                            onChange={e => handleChange('llm_research_reasoning_effort', (e.target.value || undefined) as Config['llm_research_reasoning_effort'])}
+                          >
+                            {reasoningOptions.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {analystModel?.supportsReasoning && (
+                        <div>
+                          <label className="hud-label block mb-1">Analyst reasoning effort</label>
+                          <select
+                            className="hud-input w-full"
+                            value={localConfig.llm_analyst_reasoning_effort ?? 'none'}
+                            onChange={e => handleChange('llm_analyst_reasoning_effort', (e.target.value || undefined) as Config['llm_analyst_reasoning_effort'])}
+                          >
+                            {reasoningOptions.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>

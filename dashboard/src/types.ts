@@ -120,6 +120,10 @@ export interface Config {
   llm_provider?: 'openai-raw' | 'openrouter' | 'ai-sdk' | 'cloudflare-gateway'
   llm_model: string
   llm_analyst_model?: string
+  /** OpenRouter reasoning effort for research (only when model supports it) */
+  llm_research_reasoning_effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+  /** OpenRouter reasoning effort for analyst (only when model supports it) */
+  llm_analyst_reasoning_effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
   starting_equity?: number
 
   // Stale position management
@@ -174,6 +178,8 @@ export interface OpenRouterModel {
   supportsResponseFormat: boolean
   /** Whether this model supports text output (not image-only) */
   supportsTextOutput: boolean
+  /** Whether this model supports OpenRouter reasoning effort (e.g. Pony Alpha) */
+  supportsReasoning: boolean
 }
 
 export interface SignalResearch {

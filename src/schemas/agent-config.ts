@@ -25,6 +25,8 @@ export const AgentConfigSchema = z
     llm_provider: z.enum(["openai-raw", "openrouter", "ai-sdk", "cloudflare-gateway"]),
     llm_model: z.string().min(1),
     llm_analyst_model: z.string().min(1),
+    llm_research_reasoning_effort: z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]).optional(),
+    llm_analyst_reasoning_effort: z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]).optional(),
 
     options_enabled: z.boolean(),
     options_min_confidence: z.number().min(0).max(1),

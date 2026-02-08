@@ -297,6 +297,8 @@ export interface NewsProvider {
   search(query: string, limit?: number): Promise<NewsItem[]>;
 }
 
+export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
 export interface CompletionParams {
   model?: string;
   messages: Array<{
@@ -306,6 +308,8 @@ export interface CompletionParams {
   temperature?: number;
   max_tokens?: number;
   response_format?: { type: "json_object" } | { type: "text" };
+  /** OpenRouter: reasoning effort (e.g. for Pony Alpha). Other providers ignore. */
+  reasoning?: { effort?: ReasoningEffort; exclude?: boolean };
 }
 
 export interface CompletionResult {

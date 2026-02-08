@@ -41,6 +41,7 @@ function parseModels(data: OpenRouterApiModel[]): OpenRouterModel[] {
         combinedPricePer1M: Math.round((promptPricePer1M + completionPricePer1M) * 10000) / 10000,
         supportsResponseFormat: supportedParams.includes('response_format') || supportedParams.includes('structured_outputs'),
         supportsTextOutput: outputModalities.includes('text'),
+        supportsReasoning: supportedParams.includes('reasoning'),
       }
     })
     .sort((a, b) => a.combinedPricePer1M - b.combinedPricePer1M)

@@ -84,6 +84,8 @@ interface AgentConfig {
   llm_provider: "openai-raw" | "openrouter" | "ai-sdk" | "cloudflare-gateway"; // [TUNE] Provider: openai-raw, openrouter, ai-sdk, cloudflare-gateway
   llm_model: string; // [TUNE] Model for quick research (gpt-4o-mini)
   llm_analyst_model: string; // [TUNE] Model for deep analysis (gpt-4o)
+  llm_research_reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh"; // [TUNE] OpenRouter reasoning effort for research
+  llm_analyst_reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh"; // [TUNE] OpenRouter reasoning effort for analyst
   llm_min_hold_minutes: number; // [TUNE] Min minutes before LLM can recommend sell (default: 30)
 
   // Options trading - trade options instead of shares for high-conviction plays
@@ -917,6 +919,20 @@ export class MahoragaHarness extends DurableObject<Env> {
     } else {
       console.log("[MahoragaHarness] WARNING: No valid LLM provider configured");
     }
+  }
+
+  /** Build reasoning param for research LLM calls (OpenRouter). Omit when unset or "none". */
+  private getResearchReasoning(): { effort: "xhigh" | "high" | "medium" | "low" | "minimal" | "none" } | undefined {
+    const e = this.state.config.llm_research_reasoning_effort;
+    if (e == null || e === "none") return undefined;
+    return { effort: e };
+  }
+
+  /** Build reasoning param for analyst LLM calls (OpenRouter). Omit when unset or "none". */
+  private getAnalystReasoning(): { effort: "xhigh" | "high" | "medium" | "low" | "minimal" | "none" } | undefined {
+    const e = this.state.config.llm_analyst_reasoning_effort;
+    if (e == null || e === "none") return undefined;
+    return { effort: e };
   }
 
   // ============================================================================
@@ -2637,6 +2653,7 @@ JSON response:
         max_tokens: 500,
         temperature: 0.3,
         response_format: { type: "json_object" },
+        reasoning: this.getResearchReasoning(),
       });
 
       const usage = response.usage;
@@ -2805,6 +2822,7 @@ Respond with a JSON object containing a "results" array with one entry per signa
           max_tokens: maxTokens,
           temperature: 0.3,
           response_format: { type: "json_object" },
+          reasoning: this.getResearchReasoning(),
         });
         if ((response.content ?? "").trim().length >= 10) break;
       }
@@ -3277,6 +3295,7 @@ JSON response:
           max_tokens: 650,
           temperature: 0.3,
           response_format: { type: "json_object" },
+          reasoning: this.getResearchReasoning(),
         });
         singleResponse = response;
         if ((response.content ?? "").trim().length >= 10) break;
@@ -3479,6 +3498,7 @@ Respond with a JSON object containing a "results" array with one entry per signa
           max_tokens: maxTokens,
           temperature: 0.3,
           response_format: { type: "json_object" },
+          reasoning: this.getResearchReasoning(),
         });
         batchResponse = response;
         if ((response.content ?? "").trim().length >= 10) break;
@@ -3677,6 +3697,7 @@ Provide a brief risk assessment and recommendation (HOLD, SELL, or ADD). JSON fo
         max_tokens: 200,
         temperature: 0.3,
         response_format: { type: "json_object" },
+        reasoning: this.getResearchReasoning(),
       });
 
       const usage = response.usage;
@@ -3821,6 +3842,7 @@ Response format:
         max_tokens: 800,
         temperature: 0.4,
         response_format: { type: "json_object" },
+        reasoning: this.getAnalystReasoning(),
       });
 
       const usage = response.usage;
