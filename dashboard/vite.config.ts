@@ -7,7 +7,7 @@ const apiTarget = process.env.MAHORAGA_API_URL || `http://localhost:${process.en
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 3000,
+    port: 5173,
     proxy: {
       '/api': {
         target: apiTarget,

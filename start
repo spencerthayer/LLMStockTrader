@@ -29,7 +29,7 @@ echo "Log file: $LOG_FILE"
 echo "------------------------------------------------"
 
 BACKEND_PORT="${WRANGLER_PORT:-8787}"
-DASHBOARD_PORT=3000
+DASHBOARD_PORT=5173
 
 # ---------------------------------------------------------------------------
 # Helpers
