@@ -1398,7 +1398,7 @@ export default function App() {
         </div>
 
         {/* Index / exchange ticker strip */}
-        <section className="mt-4 pt-3 border-t border-hud-line/50">
+        <section className="mt-4 pt-3 border-t border-hud-line/50" id="index-ticker-strip">
           <div className="flex flex-wrap gap-2 sm:gap-3">
             {INDEX_TICKERS.map(({ label, symbol }) => {
               const card = indexCards[symbol]
