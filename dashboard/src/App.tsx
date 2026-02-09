@@ -387,6 +387,9 @@ export default function App() {
   const [signalFilter, setSignalFilter] = useState<SignalFilter>('all')
   type IndexCardData = { price: number; dailyChangePct: number }
   const [indexCards, setIndexCards] = useState<Record<string, IndexCardData | null>>({})
+  const [tickerNeedsScroll, setTickerNeedsScroll] = useState(false)
+  const tickerStripRef = useRef<HTMLDivElement>(null)
+  const tickerInnerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const checkSetup = async () => {
@@ -493,6 +496,25 @@ export default function App() {
     const interval = setInterval(fetchIndexCards, 60_000)
     return () => clearInterval(interval)
   }, [setupChecked, showSetup])
+
+  // Detect when index ticker strip overflows so we can enable marquee scroll
+  useEffect(() => {
+    const strip = tickerStripRef.current
+    if (!strip) return
+    const inner = tickerInnerRef.current
+    const check = () => {
+      if (inner) {
+        setTickerNeedsScroll(inner.scrollWidth > strip.clientWidth)
+      } else {
+        // Marquee is visible; switch back to static when strip is wide enough for all six
+        setTickerNeedsScroll(strip.clientWidth < 640)
+      }
+    }
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(strip)
+    return () => ro.disconnect()
+  }, [indexCards])
 
   const handleSaveConfig = async (config: Config) => {
     // #region agent log
@@ -890,6 +912,89 @@ export default function App() {
               )}
             </Panel>
           </div>
+
+          {/* Index / exchange ticker strip — own row above positions, marquees when all six don't fit */}
+          <section
+            id="index-ticker-strip"
+            ref={tickerStripRef}
+            className="panel-index-ticker col-span-4 md:col-span-8 lg:col-span-12 overflow-hidden"
+          >
+            {tickerNeedsScroll ? (
+              <div className="overflow-hidden" aria-label="Index tickers scrolling">
+                <div className="ticker-marquee-inner flex gap-2 sm:gap-3 w-max">
+                  {[1, 2].map((copy) => (
+                    <div key={copy} className="flex gap-2 sm:gap-3 shrink-0">
+                      {INDEX_TICKERS.map(({ label, symbol }) => {
+                        const card = indexCards[symbol]
+                        const up = card ? card.dailyChangePct >= 0 : false
+                        const down = card ? card.dailyChangePct < 0 : false
+                        return (
+                          <div
+                            key={`${copy}-${symbol}`}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 shrink-0"
+                          >
+                            <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
+                            <span className="hud-value-sm font-mono">{symbol}</span>
+                            {card != null ? (
+                              <>
+                                {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
+                                {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
+                                <span
+                                  className={clsx(
+                                    'hud-value-sm font-mono tabular-nums',
+                                    up && 'text-hud-success',
+                                    down && 'text-hud-error'
+                                  )}
+                                >
+                                  {formatPercent(card.dailyChangePct)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-hud-text-dim text-xs">—</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div ref={tickerInnerRef} className="flex flex-wrap gap-2 sm:gap-3">
+                {INDEX_TICKERS.map(({ label, symbol }) => {
+                  const card = indexCards[symbol]
+                  const up = card ? card.dailyChangePct >= 0 : false
+                  const down = card ? card.dailyChangePct < 0 : false
+                  return (
+                    <div
+                      key={symbol}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 min-w-25"
+                    >
+                      <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
+                      <span className="hud-value-sm font-mono">{symbol}</span>
+                      {card != null ? (
+                        <>
+                          {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
+                          {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
+                          <span
+                            className={clsx(
+                              'hud-value-sm font-mono tabular-nums',
+                              up && 'text-hud-success',
+                              down && 'text-hud-error'
+                            )}
+                          >
+                            {formatPercent(card.dailyChangePct)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-hud-text-dim text-xs">—</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
 
           {/* Row 2 @narrow: POSITIONS | POSITION PERFORMANCE */}
           <div id="positions" className="panel-positions col-span-4 md:col-span-4 lg:col-span-5">
@@ -1396,43 +1501,6 @@ export default function App() {
             </Panel>
           </div>
         </div>
-
-        {/* Index / exchange ticker strip */}
-        <section className="mt-4 pt-3 border-t border-hud-line/50" id="index-ticker-strip">
-          <div className="flex flex-wrap gap-2 sm:gap-3">
-            {INDEX_TICKERS.map(({ label, symbol }) => {
-              const card = indexCards[symbol]
-              const up = card ? card.dailyChangePct >= 0 : false
-              const down = card ? card.dailyChangePct < 0 : false
-              return (
-                <div
-                  key={symbol}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 min-w-25"
-                >
-                  <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
-                  <span className="hud-value-sm font-mono">{symbol}</span>
-                  {card != null ? (
-                    <>
-                      {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
-                      {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
-                      <span
-                        className={clsx(
-                          'hud-value-sm font-mono tabular-nums',
-                          up && 'text-hud-success',
-                          down && 'text-hud-error'
-                        )}
-                      >
-                        {formatPercent(card.dailyChangePct)}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-hud-text-dim text-xs">—</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </section>
 
         <footer className="mt-4 pt-3 border-t border-hud-line relative before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:neon-stripe before:opacity-40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex flex-wrap gap-4 md:gap-6">
