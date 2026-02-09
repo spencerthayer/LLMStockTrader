@@ -44,6 +44,10 @@ interface LineChartProps {
   marketHours?: MarketHoursZone
   /** When true, shows Line / Candle / Both toggle and candlestick layer (5-min) under the line */
   showChartTypeToggle?: boolean
+  /** Controlled view mode (use with onViewModeChange when rendering toggle outside the chart) */
+  viewMode?: ChartViewMode
+  /** Callback when view mode changes (use with viewMode for controlled mode) */
+  onViewModeChange?: (mode: ChartViewMode) => void
 }
 
 const variantColors: Record<ChartVariant, { stroke: string; fill: string }> = {
@@ -85,10 +89,15 @@ export function LineChart({
   markers,
   marketHours,
   showChartTypeToggle = false,
+  viewMode: controlledViewMode,
+  onViewModeChange,
 }: LineChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [hoverMarker, setHoverMarker] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<ChartViewMode>('both')
+  const [internalViewMode, setInternalViewMode] = useState<ChartViewMode>('both')
+  const viewMode = controlledViewMode ?? internalViewMode
+  const setViewMode = onViewModeChange ?? setInternalViewMode
+  const showToggleInChart = showChartTypeToggle && controlledViewMode === undefined
   const svgRef = useRef<SVGSVGElement>(null)
 
   const viewBoxWidth = 800
@@ -488,7 +497,7 @@ export function LineChart({
     </svg>
   )
 
-  if (showChartTypeToggle) {
+  if (showChartTypeToggle && showToggleInChart) {
     return (
       <div className="relative h-full w-full">
         {chartContent}

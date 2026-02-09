@@ -6,7 +6,7 @@ import { Metric, MetricInline } from './components/Metric'
 import { StatusIndicator, StatusBar } from './components/StatusIndicator'
 import { SettingsModal } from './components/SettingsModal'
 import { SetupWizard } from './components/SetupWizard'
-import { LineChart, Sparkline } from './components/LineChart'
+import { LineChart, Sparkline, type ChartViewMode } from './components/LineChart'
 import { NotificationBell } from './components/NotificationBell'
 import { Tooltip, TooltipContent } from './components/Tooltip'
 import { CrtEffect } from './components/CrtEffect'
@@ -338,6 +338,7 @@ export default function App() {
   const [time, setTime] = useState(new Date())
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([])
   const [portfolioPeriod, setPortfolioPeriod] = useState<'1D' | '1W' | '1M'>('1D')
+  const [portfolioChartViewMode, setPortfolioChartViewMode] = useState<ChartViewMode>('both')
   const [crtEnabled, setCrtEnabled] = useState(() => localStorage.getItem('mahoraga_crt') === 'true')
   const [cryptoAssets, setCryptoAssets] = useState<CryptoAsset[]>([])
   type SignalFilter = 'all' | 'social' | 'market_data' | 'sec' | 'crypto'
@@ -569,6 +570,15 @@ export default function App() {
       timeZone: 'America/New_York',
       hour: '2-digit', minute: '2-digit', hour12: false,
     })
+    const etWeekdayFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+    })
+    // Only show session lines on weekdays (Mon–Fri); hide on weekends when market is closed.
+    const isWeekdayET = (ts: number) => {
+      const day = etWeekdayFormatter.format(new Date(ts))
+      return day !== 'Sat' && day !== 'Sun'
+    }
 
     const markers: { index: number; label: string; color?: string; tooltip?: string[] }[] = []
     let openIndex = -1
@@ -595,6 +605,8 @@ export default function App() {
     let afterHoursIndex = -1
 
     portfolioHistory.forEach((s, i) => {
+      if (!isWeekdayET(s.timestamp)) return
+
       const etTime = etFormatter.format(new Date(s.timestamp))
       const etMinutes = toMinutes(etTime)
 
@@ -962,7 +974,21 @@ export default function App() {
             <Panel
               title="PORTFOLIO PERFORMANCE"
               titleRight={
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  {(['line', 'candle', 'both'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setPortfolioChartViewMode(mode)}
+                      className={clsx(
+                        'hud-label transition-colors px-1.5 py-0.5 rounded',
+                        portfolioChartViewMode === mode ? 'text-hud-primary' : 'text-hud-text-dim hover:text-hud-text'
+                      )}
+                    >
+                      {mode === 'line' ? 'LINE' : mode === 'candle' ? 'CANDLE' : 'BOTH'}
+                    </button>
+                  ))}
+                  <span className="w-px h-4 bg-hud-line mx-1" aria-hidden />
                   {(['1D', '1W', '1M'] as const).map(p => (
                     <button
                       key={p}
@@ -991,6 +1017,8 @@ export default function App() {
                     markers={marketMarkers}
                     marketHours={marketHoursZone}
                     showChartTypeToggle={true}
+                    viewMode={portfolioChartViewMode}
+                    onViewModeChange={setPortfolioChartViewMode}
                   />
                 </div>
               ) : (
