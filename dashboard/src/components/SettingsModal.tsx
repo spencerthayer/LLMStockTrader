@@ -14,6 +14,7 @@ interface SettingsModalProps {
 export function SettingsModal({ config, onSave, onClose, cryptoAssets = [] }: SettingsModalProps) {
   const [localConfig, setLocalConfig] = useState<Config>(config)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [apiToken, setApiToken] = useState(localStorage.getItem('mahoraga_api_token') || '')
   const { models: openRouterModels, loading: modelsLoading, error: modelsError } = useOpenRouterModels(localConfig.llm_provider === 'openrouter')
 
@@ -44,16 +45,27 @@ export function SettingsModal({ config, onSave, onClose, cryptoAssets = [] }: Se
   }
 
   const handleChange = <K extends keyof Config>(key: K, value: Config[K]) => {
+    setSaveError(null)
     setLocalConfig(prev => ({ ...prev, [key]: value }))
   }
 
   const handleSave = async () => {
+    setSaveError(null)
     setSaving(true)
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SettingsModal.tsx:handleSave:entry', message: 'save_started', data: { max_positions: localConfig.max_positions }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {})
+    // #endregion
     try {
       await onSave(localConfig)
       onClose()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Save failed'
+      setSaveError(message)
     } finally {
       setSaving(false)
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SettingsModal.tsx:handleSave:finally', message: 'save_finished', data: {}, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {})
+      // #endregion
     }
   }
 
@@ -735,17 +747,24 @@ export function SettingsModal({ config, onSave, onClose, cryptoAssets = [] }: Se
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-4 pt-4 border-t border-hud-line">
-            <button className="hud-button" onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              className="hud-button"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save Configuration'}
-            </button>
+          <div className="flex flex-col gap-3 pt-4 border-t border-hud-line">
+            {saveError && (
+              <p className="text-hud-error text-sm" role="alert">
+                {saveError}
+              </p>
+            )}
+            <div className="flex justify-end gap-4">
+              <button className="hud-button" onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                className="hud-button"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Configuration'}
+              </button>
+            </div>
           </div>
         </div>
       </Panel>

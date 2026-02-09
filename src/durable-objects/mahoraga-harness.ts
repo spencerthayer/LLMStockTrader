@@ -1561,7 +1561,7 @@ export class MahoragaHarness extends DurableObject<Env> {
 
   private async runDataGatherers(): Promise<void> {
     // #region agent log
-    // Debug log context: use latest file in project logs/ (see .cursor/rules/debug-logs.mdc). Do not use .cursor/debug.log.
+    // Debug log context: use latest file in project logs/ (see .cursor/rules/debug-logs.mdc).
     fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

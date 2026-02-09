@@ -420,13 +420,35 @@ export default function App() {
   }, [setupChecked, showSetup])
 
   const handleSaveConfig = async (config: Config) => {
-    const res = await authFetch(`${API_BASE}/config`, {
-      method: 'POST',
-      body: JSON.stringify(config),
-    })
-    const data = await res.json()
-    if (data.ok && status) {
-      setStatus({ ...status, config: data.data })
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:handleSaveConfig:entry', message: 'handleSaveConfig_start', data: { max_positions: config.max_positions }, timestamp: Date.now(), hypothesisId: 'H2' }) }).catch(() => {})
+    // #endregion
+    const CONFIG_SAVE_TIMEOUT_MS = 15_000
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG_SAVE_TIMEOUT_MS)
+    try {
+      const res = await authFetch(`${API_BASE}/config`, {
+        method: 'POST',
+        body: JSON.stringify(config),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:handleSaveConfig:afterFetch', message: 'fetch_resolved', data: { status: res.status, ok: res.ok }, timestamp: Date.now(), hypothesisId: 'H2' }) }).catch(() => {})
+      // #endregion
+      const data = await res.json()
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:handleSaveConfig:afterJson', message: 'json_parsed', data: { hasData: !!data, ok: data?.ok }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {})
+      // #endregion
+      if (data.ok && status) {
+        setStatus({ ...status, config: data.data })
+      }
+    } catch (err) {
+      clearTimeout(timeoutId)
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:handleSaveConfig:catch', message: 'handleSaveConfig_error', data: { errName: (err as Error)?.name, errMessage: (err as Error)?.message }, timestamp: Date.now(), hypothesisId: 'H4' }) }).catch(() => {})
+      // #endregion
+      throw err
     }
   }
 
