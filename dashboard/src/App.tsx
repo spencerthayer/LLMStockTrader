@@ -84,6 +84,16 @@ function getSentimentColor(score: number): string {
 const PORTFOLIO_PERIODS = ['1H', '3H', '6H', '12H', '1D', '1W', '1M'] as const
 type PortfolioPeriod = (typeof PORTFOLIO_PERIODS)[number]
 
+// Exchange/index ticker cards: label + Alpaca symbol (ETFs as proxies)
+const INDEX_TICKERS = [
+  { label: 'NYSE', symbol: 'VTI' },
+  { label: 'NASDAQ', symbol: 'QQQ' },
+  { label: 'ARCA', symbol: 'SPY' },
+  { label: 'AMEX', symbol: 'IWM' },
+  { label: 'BATS', symbol: 'IVV' },
+  { label: 'Dow Jones', symbol: 'DIA' },
+] as const
+
 const isIntradayPeriod = (p: string) => ['1H', '3H', '6H', '12H', '1D'].includes(p)
 
 async function fetchPortfolioHistory(period: PortfolioPeriod): Promise<PortfolioSnapshot[]> {
@@ -375,6 +385,8 @@ export default function App() {
   const [cryptoAssets, setCryptoAssets] = useState<CryptoAsset[]>([])
   type SignalFilter = 'all' | 'social' | 'market_data' | 'sec' | 'crypto'
   const [signalFilter, setSignalFilter] = useState<SignalFilter>('all')
+  type IndexCardData = { price: number; dailyChangePct: number }
+  const [indexCards, setIndexCards] = useState<Record<string, IndexCardData | null>>({})
 
   useEffect(() => {
     const checkSetup = async () => {
@@ -450,6 +462,36 @@ export default function App() {
       }
     }
     fetchCryptoAssets()
+  }, [setupChecked, showSetup])
+
+  // Fetch index/exchange ticker snapshots for the ticker strip
+  useEffect(() => {
+    if (!setupChecked || showSetup) return
+    const fetchIndexCards = async () => {
+      const results = await Promise.allSettled(
+        INDEX_TICKERS.map(({ symbol }) =>
+          authFetch(`${API_BASE}/symbol-detail/${encodeURIComponent(symbol)}`).then((r) => r.json())
+        )
+      )
+      const next: Record<string, IndexCardData | null> = {}
+      results.forEach((result, i) => {
+        const { symbol } = INDEX_TICKERS[i]!
+        if (result.status !== 'fulfilled' || !result.value?.ok || !result.value?.data) {
+          next[symbol] = null
+          return
+        }
+        const d = result.value.data as SymbolDetail
+        const price =
+          d.bid_price && d.ask_price ? (d.bid_price + d.ask_price) / 2 : d.open || d.bid_price || d.ask_price || 0
+        const prev = d.previous_close ?? 0
+        const dailyChangePct = prev ? ((price - prev) / prev) * 100 : 0
+        next[symbol] = { price, dailyChangePct }
+      })
+      setIndexCards(next)
+    }
+    fetchIndexCards()
+    const interval = setInterval(fetchIndexCards, 60_000)
+    return () => clearInterval(interval)
   }, [setupChecked, showSetup])
 
   const handleSaveConfig = async (config: Config) => {
@@ -1354,6 +1396,43 @@ export default function App() {
             </Panel>
           </div>
         </div>
+
+        {/* Index / exchange ticker strip */}
+        <section className="mt-4 pt-3 border-t border-hud-line/50">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            {INDEX_TICKERS.map(({ label, symbol }) => {
+              const card = indexCards[symbol]
+              const up = card ? card.dailyChangePct >= 0 : false
+              const down = card ? card.dailyChangePct < 0 : false
+              return (
+                <div
+                  key={symbol}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 min-w-25"
+                >
+                  <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
+                  <span className="hud-value-sm font-mono">{symbol}</span>
+                  {card != null ? (
+                    <>
+                      {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
+                      {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
+                      <span
+                        className={clsx(
+                          'hud-value-sm font-mono tabular-nums',
+                          up && 'text-hud-success',
+                          down && 'text-hud-error'
+                        )}
+                      >
+                        {formatPercent(card.dailyChangePct)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-hud-text-dim text-xs">—</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
 
         <footer className="mt-4 pt-3 border-t border-hud-line relative before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:neon-stripe before:opacity-40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex flex-wrap gap-4 md:gap-6">
