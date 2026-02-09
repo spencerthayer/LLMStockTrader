@@ -272,6 +272,10 @@ function SymbolDetailTooltip({
           <div className="space-y-0.5 border-t border-hud-line/30 pt-1">
             <div className="hud-label text-[10px] text-hud-text-dim uppercase tracking-wider">Price</div>
             <div className="flex justify-between gap-4">
+              <span className="text-hud-text-dim">Previous Close</span>
+              <span className="text-hud-text-bright">{detail.previous_close != null ? formatCurrency(detail.previous_close) : '--'}</span>
+            </div>
+            <div className="flex justify-between gap-4">
               <span className="text-hud-text-dim">Open</span>
               <span className="text-hud-text-bright">{formatCurrency(detail.open)}</span>
             </div>
@@ -308,51 +312,61 @@ function SymbolDetailTooltip({
               <span className="text-hud-text-dim">Dividend Yield</span>
               <span className="text-hud-text-bright">{detail.dividend_yield !== null ? `${detail.dividend_yield.toFixed(2)}%` : '--'}</span>
             </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-hud-text-dim">Beta</span>
+              <span className="text-hud-text-bright">{detail.beta != null ? detail.beta.toFixed(4) : '--'}</span>
+            </div>
           </div>
 
-          {/* Short Section */}
+          {/* Short / Attributes Section */}
           {!isCrypto && (
             <div className="space-y-0.5 border-t border-hud-line/30 pt-1">
-              <div className="hud-label text-[10px] text-hud-text-dim uppercase tracking-wider">Short Info</div>
+              <div className="hud-label text-[10px] text-hud-text-dim uppercase tracking-wider">Attributes</div>
               <div className="flex justify-between gap-4">
-                <span className="text-hud-text-dim">Short Inventory</span>
-                <span className="text-hud-text-bright">{detail.shortable ? 'Available' : 'Unavailable'}</span>
+                <span className="text-hud-text-dim">Shortable</span>
+                <span className="text-hud-text-bright">{detail.shortable ? 'Yes' : 'No'}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-hud-text-dim">Borrow Rate</span>
-                <span className="text-hud-text-dim">--</span>
+                <span className="text-hud-text-dim">Marginable</span>
+                <span className="text-hud-text-bright">{detail.marginable != null ? (detail.marginable ? 'Yes' : 'No') : '--'}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-hud-text-dim">Fractionable</span>
+                <span className="text-hud-text-bright">{detail.fractionable != null ? (detail.fractionable ? 'Yes' : 'No') : '--'}</span>
               </div>
             </div>
           )}
         </>
       )}
 
-      {/* Position Section (always available from existing data) */}
-      <div className="space-y-0.5 border-t border-hud-line/30 pt-1">
-        <div className="hud-label text-[10px] text-hud-text-dim uppercase tracking-wider">Position</div>
-        <div className="flex justify-between gap-4">
-          <span className="text-hud-text-dim">Entry Price</span>
-          <span className="text-hud-text-bright">{posEntry ? formatCurrency(posEntry.entry_price) : 'N/A'}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-hud-text-dim">Current Price</span>
-          <span className="text-hud-text-bright">{formatCurrency(currentPrice)}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-hud-text-dim">Hold Time</span>
-          <span className="text-hud-text-bright">{holdTime !== null ? `${holdTime}h` : 'N/A'}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-hud-text-dim">Entry Sentiment</span>
-          <span className="text-hud-text-bright">{posEntry ? `${(posEntry.entry_sentiment * 100).toFixed(0)}%` : 'N/A'}</span>
-        </div>
-        {staleness && (
+      {/* Position Section (only when this symbol is an open position) */}
+      {posEntry != null && (
+        <div className="space-y-0.5 border-t border-hud-line/30 pt-1">
+          <div className="hud-label text-[10px] text-hud-text-dim uppercase tracking-wider">Position</div>
           <div className="flex justify-between gap-4">
-            <span className="text-hud-text-dim">Staleness</span>
-            <span className={staleness.shouldExit ? 'text-hud-error' : 'text-hud-text'}>{Number.isFinite(staleness.score) ? `${(staleness.score * 100).toFixed(0)}%` : 'N/A'}</span>
+            <span className="text-hud-text-dim">Entry Price</span>
+            <span className="text-hud-text-bright">{formatCurrency(posEntry.entry_price)}</span>
           </div>
-        )}
-      </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-hud-text-dim">Current Price</span>
+            <span className="text-hud-text-bright">{formatCurrency(currentPrice)}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-hud-text-dim">Hold Time</span>
+            <span className="text-hud-text-bright">{holdTime !== null ? `${holdTime}h` : 'N/A'}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-hud-text-dim">Entry Sentiment</span>
+            <span className="text-hud-text-bright">{(posEntry.entry_sentiment * 100).toFixed(0)}%</span>
+          </div>
+          {staleness && (
+            <div className="flex justify-between gap-4">
+              <span className="text-hud-text-dim">Staleness</span>
+              <span className={staleness.shouldExit ? 'text-hud-error' : 'text-hud-text'}>{Number.isFinite(staleness.score) ? `${(staleness.score * 100).toFixed(0)}%` : 'N/A'}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {posEntry?.entry_reason && (
         <p className="text-hud-text-dim text-hud-sm leading-tight border-t border-hud-line/30 pt-1">
@@ -929,30 +943,37 @@ export default function App() {
                         const up = card ? card.dailyChangePct >= 0 : false
                         const down = card ? card.dailyChangePct < 0 : false
                         return (
-                          <div
+                          <SymbolDetailTooltip
                             key={`${copy}-${symbol}`}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 shrink-0"
+                            symbol={symbol}
+                            holdTime={null}
+                            currentPrice={card?.price ?? 0}
+                            isCrypto={false}
                           >
-                            <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
-                            <span className="hud-value-sm font-mono">{symbol}</span>
-                            {card != null ? (
-                              <>
-                                {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
-                                {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
-                                <span
-                                  className={clsx(
-                                    'hud-value-sm font-mono tabular-nums',
-                                    up && 'text-hud-success',
-                                    down && 'text-hud-error'
-                                  )}
-                                >
-                                  {formatPercent(card.dailyChangePct)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-hud-text-dim text-xs">—</span>
-                            )}
-                          </div>
+                            <div
+                              className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 shrink-0 cursor-help"
+                            >
+                              <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
+                              <span className="hud-value-sm font-mono">{symbol}</span>
+                              {card != null ? (
+                                <>
+                                  {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
+                                  {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
+                                  <span
+                                    className={clsx(
+                                      'hud-value-sm font-mono tabular-nums',
+                                      up && 'text-hud-success',
+                                      down && 'text-hud-error'
+                                    )}
+                                  >
+                                    {formatPercent(card.dailyChangePct)}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-hud-text-dim text-xs">—</span>
+                              )}
+                            </div>
+                          </SymbolDetailTooltip>
                         )
                       })}
                     </div>
@@ -966,30 +987,37 @@ export default function App() {
                   const up = card ? card.dailyChangePct >= 0 : false
                   const down = card ? card.dailyChangePct < 0 : false
                   return (
-                    <div
+                    <SymbolDetailTooltip
                       key={symbol}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 min-w-25"
+                      symbol={symbol}
+                      holdTime={null}
+                      currentPrice={card?.price ?? 0}
+                      isCrypto={false}
                     >
-                      <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
-                      <span className="hud-value-sm font-mono">{symbol}</span>
-                      {card != null ? (
-                        <>
-                          {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
-                          {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
-                          <span
-                            className={clsx(
-                              'hud-value-sm font-mono tabular-nums',
-                              up && 'text-hud-success',
-                              down && 'text-hud-error'
-                            )}
-                          >
-                            {formatPercent(card.dailyChangePct)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-hud-text-dim text-xs">—</span>
-                      )}
-                    </div>
+                      <div
+                        className="flex items-center gap-2 px-3 py-1.5 rounded border border-hud-line/30 bg-hud-bg/50 min-w-25 cursor-help"
+                      >
+                        <span className="hud-label text-hud-text-dim text-xs whitespace-nowrap">{label}</span>
+                        <span className="hud-value-sm font-mono">{symbol}</span>
+                        {card != null ? (
+                          <>
+                            {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
+                            {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
+                            <span
+                              className={clsx(
+                                'hud-value-sm font-mono tabular-nums',
+                                up && 'text-hud-success',
+                                down && 'text-hud-error'
+                              )}
+                            >
+                              {formatPercent(card.dailyChangePct)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-hud-text-dim text-xs">—</span>
+                        )}
+                      </div>
+                    </SymbolDetailTooltip>
                   )
                 })}
               </div>
