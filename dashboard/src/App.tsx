@@ -81,14 +81,46 @@ function getSentimentColor(score: number): string {
   return 'text-hud-warning'
 }
 
-async function fetchPortfolioHistory(period: string = '1D'): Promise<PortfolioSnapshot[]> {
+const PORTFOLIO_PERIODS = ['1H', '3H', '6H', '12H', '1D', '1W', '1M'] as const
+type PortfolioPeriod = (typeof PORTFOLIO_PERIODS)[number]
+
+const isIntradayPeriod = (p: string) => ['1H', '3H', '6H', '12H', '1D'].includes(p)
+
+async function fetchPortfolioHistory(period: PortfolioPeriod): Promise<PortfolioSnapshot[]> {
   try {
-    const timeframe = period === '1D' ? '15Min' : '1D'
-    const intraday = period === '1D' ? '&intraday_reporting=extended_hours' : ''
-    const res = await authFetch(`${API_BASE}/history?period=${period}&timeframe=${timeframe}${intraday}`)
+    // Map UI period to API period + timeframe; for hour views request 1D at fine granularity then slice
+    let apiPeriod: string
+    let timeframe: string
+    let sliceLast: number | null = null
+    if (period === '1H') {
+      apiPeriod = '1D'
+      timeframe = '1Min'
+      sliceLast = 60
+    } else if (period === '3H') {
+      apiPeriod = '1D'
+      timeframe = '1Min'
+      sliceLast = 180
+    } else if (period === '6H') {
+      apiPeriod = '1D'
+      timeframe = '5Min'
+      sliceLast = 72
+    } else if (period === '12H') {
+      apiPeriod = '1D'
+      timeframe = '15Min'
+      sliceLast = 48
+    } else if (period === '1D') {
+      apiPeriod = '1D'
+      timeframe = '15Min'
+    } else {
+      apiPeriod = period
+      timeframe = '1D'
+    }
+    const intraday = isIntradayPeriod(period) ? '&intraday_reporting=extended_hours' : ''
+    const res = await authFetch(`${API_BASE}/history?period=${apiPeriod}&timeframe=${timeframe}${intraday}`)
     const data = await res.json()
     if (data.ok && data.data?.snapshots) {
-      return data.data.snapshots
+      const snapshots = data.data.snapshots as PortfolioSnapshot[]
+      return sliceLast != null && snapshots.length > sliceLast ? snapshots.slice(-sliceLast) : snapshots
     }
     return []
   } catch {
@@ -337,7 +369,7 @@ export default function App() {
   const [setupChecked, setSetupChecked] = useState(false)
   const [time, setTime] = useState(new Date())
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([])
-  const [portfolioPeriod, setPortfolioPeriod] = useState<'1D' | '1W' | '1M'>('1D')
+  const [portfolioPeriod, setPortfolioPeriod] = useState<PortfolioPeriod>('1D')
   const [portfolioChartViewMode, setPortfolioChartViewMode] = useState<ChartViewMode>('both')
   const [crtEnabled, setCrtEnabled] = useState(() => localStorage.getItem('mahoraga_crt') === 'true')
   const [cryptoAssets, setCryptoAssets] = useState<CryptoAsset[]>([])
@@ -543,7 +575,7 @@ export default function App() {
   const portfolioChartLabels = useMemo(() => {
     return portfolioHistory.map(s => {
       const date = new Date(s.timestamp)
-      if (portfolioPeriod === '1D') {
+      if (isIntradayPeriod(portfolioPeriod)) {
         return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: displayTimezone })
       }
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: displayTimezone })
@@ -551,7 +583,7 @@ export default function App() {
   }, [portfolioHistory, portfolioPeriod, displayTimezone])
 
   const { marketMarkers, marketHoursZone } = useMemo(() => {
-    if (portfolioPeriod !== '1D' || portfolioHistory.length === 0) {
+    if (!isIntradayPeriod(portfolioPeriod) || portfolioHistory.length === 0) {
       return { marketMarkers: undefined, marketHoursZone: undefined }
     }
 
@@ -989,7 +1021,7 @@ export default function App() {
                     </button>
                   ))}
                   <span className="w-px h-4 bg-hud-line mx-1" aria-hidden />
-                  {(['1D', '1W', '1M'] as const).map(p => (
+                  {PORTFOLIO_PERIODS.map(p => (
                     <button
                       key={p}
                       onClick={() => setPortfolioPeriod(p)}

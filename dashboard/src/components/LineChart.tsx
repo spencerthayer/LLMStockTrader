@@ -372,12 +372,12 @@ export function LineChart({
         )
       })}
 
-      {/* Candlestick layer (5-min) — drawn above the line when viewMode is candle or both */}
+      {/* Candlestick layer — wicks (high-low) and body (open-close); drawn above the line when viewMode is candle or both */}
       {showChartTypeToggle && candleData.length > 0 && (viewMode === 'candle' || viewMode === 'both') && (
         <g aria-hidden="true">
           {candleData.map((c, i) => {
             const x = getXCandle(i)
-            const cw = Math.max(2, (chartWidth / (candleCount + 1)) * 0.6)
+            const cw = Math.max(3, (chartWidth / (candleCount + 1)) * 0.6)
             const openY = getY(c.open)
             const closeY = getY(c.close)
             const highY = getY(c.high)
@@ -385,10 +385,24 @@ export function LineChart({
             const isUp = c.close >= c.open
             const bodyTop = Math.min(openY, closeY)
             const bodyHeight = Math.max(1, Math.abs(closeY - openY))
+            const strokeColor = isUp ? 'var(--color-hud-green)' : 'var(--color-hud-red)'
+            const fillOpacity = viewMode === 'both' ? 0.5 : 0.85
             return (
               <g key={i}>
-                <line x1={x} y1={highY} x2={x} y2={lowY} stroke={isUp ? 'var(--color-hud-green)' : 'var(--color-hud-red)'} strokeWidth={1} opacity={0.7} />
-                <rect x={x - cw / 2} y={bodyTop} width={cw} height={bodyHeight} fill={isUp ? 'var(--color-hud-green)' : 'var(--color-hud-red)'} opacity={viewMode === 'both' ? 0.35 : 0.6} stroke="none" />
+                {/* Wick: vertical line from high to low */}
+                <line x1={x} y1={highY} x2={x} y2={lowY} stroke={strokeColor} strokeWidth={2} opacity={1} strokeLinecap="round" />
+                {/* Body: open-close range with visible outline */}
+                <rect
+                  x={x - cw / 2}
+                  y={bodyTop}
+                  width={cw}
+                  height={bodyHeight}
+                  fill={strokeColor}
+                  fillOpacity={fillOpacity}
+                  stroke={strokeColor}
+                  strokeWidth={1}
+                  opacity={1}
+                />
               </g>
             )
           })}
