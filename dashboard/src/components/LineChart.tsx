@@ -48,6 +48,14 @@ interface LineChartProps {
   viewMode?: ChartViewMode
   /** Callback when view mode changes (use with viewMode for controlled mode) */
   onViewModeChange?: (mode: ChartViewMode) => void
+  /** When true, tooltip and hover circle use green/red for local profit/loss with +/- and percent change. */
+  showProfitLossTooltip?: boolean
+  /** Optional daily P&L values aligned to labels/series points (for extra tooltip rows). */
+  dailyTotals?: number[]
+  /** Optional daily P&L percent values aligned to labels/series points (for extra tooltip rows). */
+  dailyTotalPercents?: number[]
+  /** When true, append TOTAL and DAILY TOTAL rows in the hover tooltip. */
+  showTotalsInTooltip?: boolean
 }
 
 const variantColors: Record<ChartVariant, { stroke: string; fill: string }> = {
@@ -91,6 +99,10 @@ export function LineChart({
   showChartTypeToggle = false,
   viewMode: controlledViewMode,
   onViewModeChange,
+  showProfitLossTooltip = false,
+  dailyTotals,
+  dailyTotalPercents,
+  showTotalsInTooltip = false,
 }: LineChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [hoverMarker, setHoverMarker] = useState<number | null>(null)
@@ -411,12 +423,62 @@ export function LineChart({
 
       {hoverIndex !== null && hoverValue !== null && hoverMarker === null && (() => {
         const hoverY = getY(hoverValue)
-        const tooltipWidth = 85
-        const tooltipHeight = 38
+        // Match candle math: current vs previous (or candle close vs candle open)
+        const referenceValue = viewMode === 'candle'
+          ? (candleData[hoverIndex]?.open ?? null)
+          : (hoverIndex > 0 ? (lineData[hoverIndex - 1] ?? null) : null)
+        const useProfitLoss = showProfitLossTooltip && referenceValue != null && Number.isFinite(referenceValue)
+        const change = useProfitLoss ? hoverValue - referenceValue : 0
+        const percentChange = useProfitLoss && referenceValue !== 0 ? (change / referenceValue) * 100 : 0
+        const isProfit = change >= 0
+        const plColor = isProfit ? 'var(--color-hud-green)' : 'var(--color-hud-red)'
+        const circleStroke = useProfitLoss ? plColor : variantColors[series[0]?.variant ?? variant].stroke
+        // Format change as proper currency (not axis label which divides by 1000)
+        const absChange = Math.abs(change)
+        const changeFmt = absChange >= 1000
+          ? `$${(absChange / 1000).toFixed(1)}k`
+          : `$${absChange.toFixed(2)}`
+        const changeStr = (change >= 0 ? '+' : '-') + changeFmt
+        const percentStr = (percentChange >= 0 ? '+' : '') + percentChange.toFixed(2) + '%'
+        const toUsd = (value: number) =>
+          new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(value)
+        const lineIndex = viewMode === "candle"
+          ? Math.min(lineData.length - 1, Math.max(0, Math.round(hoverIndex / 3)))
+          : hoverIndex
+        const totalAtPoint = lineData[lineIndex] ?? hoverValue
+        const dailyAtPoint = dailyTotals?.[lineIndex]
+        const dailyPctAtPoint = dailyTotalPercents?.[lineIndex]
+        const hasDailyTotal = showTotalsInTooltip && dailyAtPoint != null && Number.isFinite(dailyAtPoint)
+        const hasDailyPct = dailyPctAtPoint != null && Number.isFinite(dailyPctAtPoint)
+        const dailyColor = (dailyAtPoint ?? 0) >= 0 ? "var(--color-hud-green)" : "var(--color-hud-red)"
+        const dailySign = (dailyAtPoint ?? 0) >= 0 ? "+" : ""
+        const dailyPctSign = (dailyPctAtPoint ?? 0) >= 0 ? "+" : ""
+        const dailyText = hasDailyTotal
+          ? `DAILY TOTAL: ${dailySign}${toUsd(dailyAtPoint ?? 0)}${hasDailyPct ? ` (${dailyPctSign}${(dailyPctAtPoint ?? 0).toFixed(2)}%)` : ""}`
+          : null
+        const tooltipRows: Array<{ text: string; fill: string; size: number; weight?: string | number }> = []
+        if (useProfitLoss) {
+          tooltipRows.push({ text: changeStr, fill: plColor, size: 11, weight: "500" })
+          tooltipRows.push({ text: percentStr, fill: plColor, size: 9 })
+        } else {
+          tooltipRows.push({ text: formatLabel(hoverValue), fill: "var(--color-hud-text)", size: 11, weight: "500" })
+        }
+        if (showTotalsInTooltip) {
+          tooltipRows.push({ text: `TOTAL: ${toUsd(totalAtPoint)}`, fill: "var(--color-hud-text)", size: 9 })
+          if (dailyText) tooltipRows.push({ text: dailyText, fill: dailyColor, size: 9 })
+        }
+        if (hoverLabel) tooltipRows.push({ text: hoverLabel, fill: "var(--color-hud-text-dim)", size: 9 })
+        const tooltipLines = tooltipRows.length
+        const tooltipWidth = showTotalsInTooltip ? 220 : useProfitLoss ? 100 : 85
+        const tooltipHeight = tooltipLines * 14 + 10
         const nearRightEdge = hoverX > viewBoxWidth - padding.right - tooltipWidth - 20
         const tooltipX = nearRightEdge ? hoverX - tooltipWidth - 12 : hoverX + 12
         const tooltipY = Math.min(Math.max(hoverY - tooltipHeight / 2, padding.top), padding.top + chartHeight - tooltipHeight)
-        
         return (
           <g>
             <line
@@ -433,7 +495,7 @@ export function LineChart({
               cy={hoverY}
               r={4}
               fill="var(--color-hud-bg)"
-              stroke={variantColors[series[0]?.variant ?? variant].stroke}
+              stroke={circleStroke}
               strokeWidth={2}
             />
             <g transform={`translate(${tooltipX}, ${tooltipY})`}>
@@ -447,14 +509,18 @@ export function LineChart({
                 strokeWidth={1}
                 rx={2}
               />
-              <text x={8} y={15} fill="var(--color-hud-text)" fontSize={11} fontWeight="500">
-                {formatLabel(hoverValue)}
-              </text>
-              {hoverLabel && (
-                <text x={8} y={30} fill="var(--color-hud-text-dim)" fontSize={9}>
-                  {hoverLabel}
+              {tooltipRows.map((row, idx) => (
+                <text
+                  key={`${idx}-${row.text}`}
+                  x={8}
+                  y={15 + idx * 13}
+                  fill={row.fill}
+                  fontSize={row.size}
+                  fontWeight={row.weight}
+                >
+                  {row.text}
                 </text>
-              )}
+              ))}
             </g>
           </g>
         )

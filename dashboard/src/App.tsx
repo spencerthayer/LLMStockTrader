@@ -644,6 +644,12 @@ export default function App() {
   const portfolioChartData = useMemo(() => {
     return portfolioHistory.map(s => s.equity)
   }, [portfolioHistory])
+  const portfolioChartDailyTotals = useMemo(() => {
+    return portfolioHistory.map(s => s.pl)
+  }, [portfolioHistory])
+  const portfolioChartDailyTotalPercents = useMemo(() => {
+    return portfolioHistory.map(s => s.pl_pct)
+  }, [portfolioHistory])
 
   // Use backend-provided timezone (falls back to ET if not set)
   const displayTimezone = status?.displayTimezone || 'America/New_York'
@@ -1222,6 +1228,10 @@ export default function App() {
                     showChartTypeToggle={true}
                     viewMode={portfolioChartViewMode}
                     onViewModeChange={setPortfolioChartViewMode}
+                    showProfitLossTooltip={true}
+                    showTotalsInTooltip={true}
+                    dailyTotals={portfolioChartDailyTotals}
+                    dailyTotalPercents={portfolioChartDailyTotalPercents}
                   />
                 </div>
               ) : (
