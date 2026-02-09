@@ -330,9 +330,6 @@ function SymbolDetailTooltip({
 }
 
 export default function App() {
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:App_body',message:'app_render_start',data:{},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   const [status, setStatus] = useState<Status | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -368,10 +365,6 @@ export default function App() {
         const res = await authFetch(`${API_BASE}/status`)
         const data = await res.json()
         if (data.ok) {
-          // #region agent log
-          const cfg = (data.data as { config?: Record<string, unknown> })?.config
-          fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:fetchStatus',message:'status_ok',data:{hasConfig:!!cfg,configKeys:cfg?Object.keys(cfg):[]},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-          // #endregion
           setStatus(data.data)
           setError(null)
         } else {
@@ -641,9 +634,6 @@ export default function App() {
   }, [positions, positionPriceHistories])
 
   // Early returns (after all hooks)
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:before_early_returns',message:'reached_main_ui_branch',data:{showSetup,error:!!error,hasStatus:!!status},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   if (showSetup) {
     return <SetupWizard onComplete={() => setShowSetup(false)} />
   }

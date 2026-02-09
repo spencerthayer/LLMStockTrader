@@ -1560,12 +1560,38 @@ export class MahoragaHarness extends DurableObject<Env> {
   private _rateLimiter: RateLimiter | null = null;
 
   private async runDataGatherers(): Promise<void> {
+    // #region agent log
+    // Debug log context: use latest file in project logs/ (see .cursor/rules/debug-logs.mdc). Do not use .cursor/debug.log.
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:runDataGatherers",
+        message: "runDataGatherers_entry",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H3,H4,H5",
+      }),
+    }).catch(() => {});
+    // #endregion
     this.log("System", "gathering_data", { sources: ["StockTwits", "Reddit", "Crypto", "SEC", "Finnhub", "FMP", "QuiverQuant", "AlpacaScreener", "AlpacaNews"] });
 
     this._rateLimiter = new RateLimiter();
     await tickerCache.refreshSecTickersIfNeeded();
 
-    const [stocktwitsSignals, redditSignals, cryptoSignals, secSignals, finnhubSignals, fmpSignals, quiverSignals, alpacaScreenerSignals, alpacaNewsSignals] = await Promise.all([
+    let gathered: [
+      Signal[],
+      Signal[],
+      Signal[],
+      Signal[],
+      Signal[],
+      Signal[],
+      Signal[],
+      Signal[],
+      Signal[],
+    ];
+    try {
+      gathered = await Promise.all([
       this.gatherStockTwits(),
       this.gatherReddit(),
       this.gatherCrypto(),
@@ -1576,7 +1602,46 @@ export class MahoragaHarness extends DurableObject<Env> {
       this.gatherAlpacaScreener(),
       this.gatherAlpacaNews(),
     ]);
-
+    } catch (err) {
+      // #region agent log
+      fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location: "mahoraga-harness.ts:runDataGatherers",
+          message: "runDataGatherers_promise_all_rejected",
+          data: { error: String(err) },
+          timestamp: Date.now(),
+          hypothesisId: "H3",
+        }),
+      }).catch(() => {});
+      // #endregion
+      throw err;
+    }
+    const [stocktwitsSignals, redditSignals, cryptoSignals, secSignals, finnhubSignals, fmpSignals, quiverSignals, alpacaScreenerSignals, alpacaNewsSignals] = gathered;
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:runDataGatherers",
+        message: "runDataGatherers_promise_all_resolved",
+        data: {
+          stocktwits: stocktwitsSignals.length,
+          reddit: redditSignals.length,
+          crypto: cryptoSignals.length,
+          sec: secSignals.length,
+          finnhub: finnhubSignals.length,
+          fmp: fmpSignals.length,
+          quiver: quiverSignals.length,
+          alpacaScreener: alpacaScreenerSignals.length,
+          alpacaNews: alpacaNewsSignals.length,
+        },
+        timestamp: Date.now(),
+        hypothesisId: "H5",
+      }),
+    }).catch(() => {});
+    // #endregion
     const allSignals = [
       ...stocktwitsSignals,
       ...redditSignals,
@@ -1660,10 +1725,36 @@ export class MahoragaHarness extends DurableObject<Env> {
       alpacaNews: alpacaNewsSignals.length,
       total: this.state.signalCache.length,
     });
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:runDataGatherers",
+        message: "runDataGatherers_complete",
+        data: { total: this.state.signalCache.length },
+        timestamp: Date.now(),
+        hypothesisId: "H4,H5",
+      }),
+    }).catch(() => {});
+    // #endregion
     this._rateLimiter = null;
   }
 
   private async gatherStockTwits(): Promise<Signal[]> {
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:gatherStockTwits",
+        message: "gatherStockTwits_entry",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H2",
+      }),
+    }).catch(() => {});
+    // #endregion
     const signals: Signal[] = [];
     const sourceWeight = SOURCE_CONFIG.weights.stocktwits;
 
@@ -1778,11 +1869,36 @@ export class MahoragaHarness extends DurableObject<Env> {
     } catch (error) {
       this.log("StockTwits", "error", { message: String(error) });
     }
-
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:gatherStockTwits",
+        message: "gatherStockTwits_exit",
+        data: { count: signals.length },
+        timestamp: Date.now(),
+        hypothesisId: "H2",
+      }),
+    }).catch(() => {});
+    // #endregion
     return signals;
   }
 
   private async gatherReddit(): Promise<Signal[]> {
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:gatherReddit",
+        message: "gatherReddit_entry",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H2",
+      }),
+    }).catch(() => {});
+    // #endregion
     const subreddits = [
       "wallstreetbets",
       "stocks",
@@ -1926,7 +2042,19 @@ export class MahoragaHarness extends DurableObject<Env> {
         });
       }
     }
-
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:gatherReddit",
+        message: "gatherReddit_exit",
+        data: { count: signals.length },
+        timestamp: Date.now(),
+        hypothesisId: "H2",
+      }),
+    }).catch(() => {});
+    // #endregion
     return signals;
   }
 
@@ -2184,6 +2312,19 @@ export class MahoragaHarness extends DurableObject<Env> {
   }
 
   private async gatherQuiverQuant(): Promise<Signal[]> {
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:gatherQuiverQuant",
+        message: "gatherQuiverQuant_entry",
+        data: { hasToken: Boolean(this.env.QUIVER_API_TOKEN) },
+        timestamp: Date.now(),
+        hypothesisId: "H1",
+      }),
+    }).catch(() => {});
+    // #endregion
     const signals: Signal[] = [];
     if (!this.env.QUIVER_API_TOKEN) return signals;
 
@@ -2289,7 +2430,19 @@ export class MahoragaHarness extends DurableObject<Env> {
     } catch (error) {
       this.log("QuiverQuant", "error", { message: String(error) });
     }
-
+    // #region agent log
+    fetch("http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "mahoraga-harness.ts:gatherQuiverQuant",
+        message: "gatherQuiverQuant_exit",
+        data: { count: signals.length },
+        timestamp: Date.now(),
+        hypothesisId: "H1",
+      }),
+    }).catch(() => {});
+    // #endregion
     return signals;
   }
 

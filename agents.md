@@ -180,6 +180,13 @@ console.log("[ComponentName] request_data", sanitizeForLog(requestData));
 - Reference `src/policy/engine.ts` for validation patterns
 - Use TypeScript strict mode - the compiler will guide you
 
+### Debug mode (see [.cursor/rules/debug-logs.mdc](.cursor/rules/debug-logs.mdc))
+- **Do not** use or reference `.cursor/debug.log` for debug or log context.
+- **Do not** use terminal snapshot files as the source of log content.
+- **Do** use the **latest file** in the project's `logs/` directory when debug or log output is needed.
+- When clearing logs before a run, delete the log file in `logs/` (e.g. `logs/debug.ndjson` if the ingest server writes there).
+- When configuring tools that write log files (e.g. wrangler), direct output to the project's `logs/` directory.
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.

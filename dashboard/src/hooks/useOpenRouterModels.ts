@@ -23,9 +23,6 @@ interface OpenRouterApiResponse {
 let cachedModels: OpenRouterModel[] | null = null
 
 function parseModels(data: OpenRouterApiModel[]): OpenRouterModel[] {
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useOpenRouterModels.ts:parseModels',message:'parseModels_entry',data:{dataLength:data?.length??0},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   return data
     .map((m) => {
       const promptPerToken = parseFloat(m.pricing?.prompt || '0') || 0
