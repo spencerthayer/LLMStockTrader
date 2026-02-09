@@ -182,6 +182,7 @@ interface ModelCost {
   calls: number;
   tokens_in: number;
   tokens_out: number;
+  failures?: number;
 }
 
 interface CostTracker {
@@ -189,6 +190,7 @@ interface CostTracker {
   calls: number;
   tokens_in: number;
   tokens_out: number;
+  failures?: number;
   by_model: Record<string, ModelCost>;
 }
 
@@ -359,7 +361,7 @@ const DEFAULT_STATE: AgentState = {
   positionEntries: {},
   socialHistory: {},
   logs: [],
-  costTracker: { total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, by_model: {} },
+  costTracker: { total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, failures: 0, by_model: {} },
   lastDataGatherRun: 0,
   lastAnalystRun: 0,
   lastResearchRun: 0,
@@ -1135,7 +1137,7 @@ export class MahoragaHarness extends DurableObject<Env> {
 
         case "costs":
           if (request.method === "DELETE") {
-            this.state.costTracker = { total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, by_model: {} };
+            this.state.costTracker = { total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, failures: 0, by_model: {} };
             await this.ctx.storage.put("state", this.state);
             return this.jsonResponse({ ok: true, message: "Costs reset" });
           }
@@ -4074,6 +4076,7 @@ Response format:
         high_conviction: analysis.high_conviction_plays || [],
       };
     } catch (error) {
+      this.trackLLMFailure(this.state.config.llm_analyst_model);
       this.log("Analyst", "error", { message: String(error) });
       return { recommendations: [], market_summary: `Analysis failed: ${error}`, high_conviction: [] };
     }
@@ -4932,7 +4935,7 @@ Response format:
       this.state.costTracker.by_model = {};
     }
     const entry = this.state.costTracker.by_model[model] ??= {
-      total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0,
+      total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, failures: 0,
     };
     entry.total_usd += cost;
     entry.calls++;
@@ -4940,6 +4943,17 @@ Response format:
     entry.tokens_out += tokensOut;
 
     return cost;
+  }
+
+  public trackLLMFailure(model: string): void {
+    if (!this.state.costTracker.by_model) {
+      this.state.costTracker.by_model = {};
+    }
+    this.state.costTracker.failures = (this.state.costTracker.failures ?? 0) + 1;
+    const entry = this.state.costTracker.by_model[model] ??= {
+      total_usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, failures: 0,
+    };
+    entry.failures = (entry.failures ?? 0) + 1;
   }
 
   private async persist(): Promise<void> {

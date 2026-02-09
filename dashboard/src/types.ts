@@ -97,6 +97,7 @@ export interface ModelCost {
   calls: number
   tokens_in: number
   tokens_out: number
+  failures?: number
 }
 
 export interface CostTracker {
@@ -104,6 +105,7 @@ export interface CostTracker {
   calls: number
   tokens_in: number
   tokens_out: number
+  failures?: number
   by_model?: Record<string, ModelCost>
 }
 

@@ -1142,7 +1142,7 @@ export default function App() {
                   />
                 </div>
                 {/* Per-model breakdown */}
-                <div className="border-t border-hud-line/30 pt-2 space-y-2">
+                <div className="border-t border-hud-line/30 pt-2">
                   {(() => {
                     const researchModel = config?.llm_model || 'gpt-4o-mini'
                     const analystModel = config?.llm_analyst_model || 'gpt-4o'
@@ -1150,27 +1150,34 @@ export default function App() {
                     const researchCost = byModel[researchModel]
                     const analystCost = byModel[analystModel]
                     return (
-                      <>
-                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center text-hud-sm">
-                          <span className="hud-label text-hud-xs">MODEL</span>
-                          <span className="hud-label text-hud-xs text-right">CALLS</span>
-                          <span className="hud-label text-hud-xs text-right">COST</span>
-                        </div>
-                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center text-hud-sm">
-                          <span className="text-hud-text truncate" title={researchModel}>
-                            <span className="text-hud-text-dim">RES</span> {researchModel}
-                          </span>
-                          <span className="text-hud-text-dim text-right font-mono">{researchCost?.calls ?? 0}</span>
-                          <span className="text-hud-text text-right font-mono">${(researchCost?.total_usd ?? 0).toFixed(4)}</span>
-                        </div>
-                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center text-hud-sm">
-                          <span className="text-hud-text truncate" title={analystModel}>
-                            <span className="text-hud-text-dim">ANA</span> {analystModel}
-                          </span>
-                          <span className="text-hud-text-dim text-right font-mono">{analystCost?.calls ?? 0}</span>
-                          <span className="text-hud-text text-right font-mono">${(analystCost?.total_usd ?? 0).toFixed(4)}</span>
-                        </div>
-                      </>
+                      <table className="w-full text-hud-sm border-collapse">
+                        <thead>
+                          <tr className="hud-label text-hud-xs">
+                            <th className="text-left py-1 pr-2 font-normal">MODEL</th>
+                            <th className="text-right py-1 px-2 font-normal w-14 tabular-nums">CALLS</th>
+                            <th className="text-right py-1 px-2 font-normal w-14 tabular-nums">FAILURES</th>
+                            <th className="text-right py-1 pl-2 font-normal w-20 tabular-nums">COST</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="text-hud-text truncate max-w-0 py-1 pr-2" title={researchModel}>
+                              <span className="text-hud-text-dim">RES</span> {researchModel}
+                            </td>
+                            <td className="text-hud-text-dim text-right font-mono tabular-nums py-1 px-2">{researchCost?.calls ?? 0}</td>
+                            <td className="text-hud-text-dim text-right font-mono tabular-nums py-1 px-2">{researchCost?.failures ?? 0}</td>
+                            <td className="text-hud-text text-right font-mono tabular-nums py-1 pl-2">${(researchCost?.total_usd ?? 0).toFixed(4)}</td>
+                          </tr>
+                          <tr>
+                            <td className="text-hud-text truncate max-w-0 py-1 pr-2" title={analystModel}>
+                              <span className="text-hud-text-dim">ANA</span> {analystModel}
+                            </td>
+                            <td className="text-hud-text-dim text-right font-mono tabular-nums py-1 px-2">{analystCost?.calls ?? 0}</td>
+                            <td className="text-hud-text-dim text-right font-mono tabular-nums py-1 px-2">{analystCost?.failures ?? 0}</td>
+                            <td className="text-hud-text text-right font-mono tabular-nums py-1 pl-2">${(analystCost?.total_usd ?? 0).toFixed(4)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     )
                   })()}
                 </div>
