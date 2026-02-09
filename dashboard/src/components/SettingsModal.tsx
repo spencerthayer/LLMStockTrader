@@ -12,6 +12,9 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ config, onSave, onClose, cryptoAssets = [] }: SettingsModalProps) {
+  // #region agent log
+  fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SettingsModal.tsx:mount',message:'settings_modal_render',data:{llmProvider:config?.llm_provider,isOpenRouter:config?.llm_provider==='openrouter'},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
   const [localConfig, setLocalConfig] = useState<Config>(config)
   const [saving, setSaving] = useState(false)
   const [apiToken, setApiToken] = useState(localStorage.getItem('mahoraga_api_token') || '')
@@ -278,6 +281,9 @@ export function SettingsModal({ config, onSave, onClose, cryptoAssets = [] }: Se
                   />
                 </div>
                 {(() => {
+                  // #region agent log
+                  fetch('http://127.0.0.1:7246/ingest/e74a6fed-0be4-43c3-aabb-46a1af95b1a3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SettingsModal.tsx:reasoning_block',message:'reasoning_block_entry',data:{compatibleLength:compatibleModels.length,hasResearch:!!compatibleModels.find(m=>m.id===localConfig.llm_model),hasAnalyst:!!compatibleModels.find(m=>m.id===(localConfig.llm_analyst_model||'openai/gpt-4o'))},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+                  // #endregion
                   const researchModel = compatibleModels.find(m => m.id === localConfig.llm_model)
                   const analystModel = compatibleModels.find(m => m.id === (localConfig.llm_analyst_model || 'openai/gpt-4o'))
                   const reasoningOptions = [
