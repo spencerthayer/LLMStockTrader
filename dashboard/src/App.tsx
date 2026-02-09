@@ -1033,7 +1033,7 @@ export default function App() {
                 <div className="text-hud-text-dim text-sm py-8 text-center">No open positions</div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                     <thead>
                       <tr className="border-b border-hud-line/50">
                         <th className="hud-label text-left py-2 px-2">Symbol</th>
