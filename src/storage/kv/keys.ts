@@ -10,6 +10,8 @@ export const CacheKeys = {
   signals: (symbol: string) => `signals:${symbol}`,
   newsIndex: (symbol: string) => `news:index:${symbol}`,
   discoveryList: (listId: string) => `discovery:${listId}`,
+  /** Dashboard ticker strip: VTI, QQQ, SPY, IWM, IVV, DIA price + daily change % */
+  indexSnapshot: () => "index:snapshot",
 } as const;
 
 export const CacheTTL = {
@@ -25,4 +27,6 @@ export const CacheTTL = {
   SIGNALS: 120,
   NEWS_INDEX: 300,
   DISCOVERY: 300,
+  /** Index ticker strip (VTI, QQQ, SPY, IWM, IVV, DIA) - 1 min */
+  INDEX_SNAPSHOT: 60,
 } as const;

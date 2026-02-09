@@ -42,11 +42,16 @@ import { createLLMProvider } from "../providers/llm/factory";
 import { createFinnhubProvider } from "../providers/finnhub";
 import { createFMPProvider } from "../providers/fmp";
 import { createQuiverQuantProvider } from "../providers/social/quiver-quant";
-import type { Account, LLMProvider, MarketClock, Position } from "../providers/types";
+import type { Account, LLMProvider, MarketClock, Position, Snapshot } from "../providers/types";
 import { RateLimiter } from "../lib/rate-limiter";
 import { parseJSONFromLLM } from "../lib/utils";
+import { createKVClient } from "../storage/kv/client";
+import { CacheKeys, CacheTTL } from "../storage/kv/keys";
 
 type LlmUsage = { prompt_tokens?: number; completion_tokens?: number; cost?: number; total_tokens?: number };
+
+/** Symbols used for dashboard index ticker strip (cached in KV, included in status). */
+const INDEX_TICKER_SYMBOLS = ["VTI", "QQQ", "SPY", "IWM", "IVV", "DIA"] as const;
 
 // ============================================================================
 // SECTION 1: TYPES & CONFIGURATION
@@ -1180,6 +1185,45 @@ export class MahoragaHarness extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Index ticker strip data (VTI, QQQ, SPY, IWM, IVV, DIA) from KV cache or Alpaca.
+   * Cached 1 min to avoid 6 symbol-detail calls from the dashboard.
+   */
+  private async getIndexSnapshot(
+    alpaca: ReturnType<typeof createAlpacaProviders>
+  ): Promise<Record<string, { price: number; dailyChangePct: number } | null>> {
+    const kv = createKVClient(this.env.CACHE);
+    return kv.getOrSet(
+      CacheKeys.indexSnapshot(),
+      async () => {
+        const symbols = [...INDEX_TICKER_SYMBOLS];
+        let snapshots: Record<string, Snapshot>;
+        try {
+          snapshots = await alpaca.marketData.getSnapshots(symbols);
+        } catch (e) {
+          console.log(`[MahoragaHarness] index snapshot fetch error: ${e}`);
+          return Object.fromEntries(symbols.map((s) => [s, null]));
+        }
+        const result: Record<string, { price: number; dailyChangePct: number } | null> = {};
+        for (const symbol of symbols) {
+          const snap = snapshots[symbol];
+          if (!snap) {
+            result[symbol] = null;
+            continue;
+          }
+          const bid = snap.latest_quote?.bid_price ?? 0;
+          const ask = snap.latest_quote?.ask_price ?? 0;
+          const price = bid && ask ? (bid + ask) / 2 : (snap.daily_bar?.c ?? 0);
+          const prev = snap.prev_daily_bar?.c ?? 0;
+          const dailyChangePct = prev ? ((price - prev) / prev) * 100 : 0;
+          result[symbol] = { price, dailyChangePct };
+        }
+        return result;
+      },
+      CacheTTL.INDEX_SNAPSHOT
+    );
+  }
+
   private async handleStatus(): Promise<Response> {
     const alpaca = createAlpacaProviders(this.env);
 
@@ -1187,12 +1231,13 @@ export class MahoragaHarness extends DurableObject<Env> {
     let positions: Position[] = [];
     let clock: MarketClock | null = null;
     let marketSchedule: { date: string; open: string; close: string } | null = null;
+    let indexSnapshot: Record<string, { price: number; dailyChangePct: number } | null> = {};
 
     try {
       // Get today's date in ET (market timezone) for calendar lookup
       const etDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
-      [account, positions, clock, marketSchedule] = await Promise.all([
+      [account, positions, clock, marketSchedule, indexSnapshot] = await Promise.all([
         alpaca.trading.getAccount(),
         alpaca.trading.getPositions(),
         alpaca.trading.getClock(),
@@ -1200,6 +1245,7 @@ export class MahoragaHarness extends DurableObject<Env> {
           const day = cal[0];
           return day ? { date: day.date, open: day.open, close: day.close } : null;
         }).catch(() => null),
+        this.getIndexSnapshot(alpaca),
       ]);
 
       for (const pos of positions || []) {
@@ -1248,6 +1294,7 @@ export class MahoragaHarness extends DurableObject<Env> {
         stalenessAnalysis: this.state.stalenessAnalysis,
         displayTimezone: this.env.DISPLAY_TIMEZONE || "America/New_York",
         marketSchedule,
+        indexSnapshot,
       },
     });
   }

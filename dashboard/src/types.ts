@@ -294,4 +294,6 @@ export interface Status {
   overnightActivity?: OvernightActivity
   displayTimezone?: string
   marketSchedule?: MarketSchedule | null
+  /** Index ticker strip (VTI, QQQ, SPY, IWM, IVV, DIA) from backend cache; avoids 6 symbol-detail calls */
+  indexSnapshot?: Record<string, { price: number; dailyChangePct: number } | null>
 }

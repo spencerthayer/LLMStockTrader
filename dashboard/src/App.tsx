@@ -96,6 +96,20 @@ const INDEX_TICKERS = [
 
 const isIntradayPeriod = (p: string) => ['1H', '3H', '6H', '12H', '1D'].includes(p)
 
+// Isolated clock so the rest of the app doesn't re-render every second
+function Clock({ timeZone }: { timeZone: string }) {
+  const [time, setTime] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <span className="hud-value-sm font-mono">
+      {time.toLocaleTimeString('en-US', { hour12: false, timeZone })}
+    </span>
+  )
+}
+
 async function fetchPortfolioHistory(period: PortfolioPeriod): Promise<PortfolioSnapshot[]> {
   try {
     // Map UI period to API period + timeframe; for hour views request 1D at fine granularity then slice
@@ -391,7 +405,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
   const [setupChecked, setSetupChecked] = useState(false)
-  const [time, setTime] = useState(new Date())
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([])
   const [portfolioPeriod, setPortfolioPeriod] = useState<PortfolioPeriod>('1D')
   const [portfolioChartViewMode, setPortfolioChartViewMode] = useState<ChartViewMode>('both')
@@ -399,8 +412,7 @@ export default function App() {
   const [cryptoAssets, setCryptoAssets] = useState<CryptoAsset[]>([])
   type SignalFilter = 'all' | 'social' | 'market_data' | 'sec' | 'crypto'
   const [signalFilter, setSignalFilter] = useState<SignalFilter>('all')
-  type IndexCardData = { price: number; dailyChangePct: number }
-  const [indexCards, setIndexCards] = useState<Record<string, IndexCardData | null>>({})
+  const indexCards = status?.indexSnapshot ?? {}
   const [tickerNeedsScroll, setTickerNeedsScroll] = useState(false)
   const tickerStripRef = useRef<HTMLDivElement>(null)
   const tickerInnerRef = useRef<HTMLDivElement>(null)
@@ -421,30 +433,44 @@ export default function App() {
     checkSetup()
   }, [])
 
+  const statusPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const statusInFlightRef = useRef(false)
+  const lastStatusJsonRef = useRef<string | null>(null)
+
   useEffect(() => {
+    const pollIntervalMs = 5000
+
     const fetchStatus = async () => {
+      if (statusInFlightRef.current) return
+      statusInFlightRef.current = true
       try {
         const res = await authFetch(`${API_BASE}/status`)
         const data = await res.json()
         if (data.ok) {
-          setStatus(data.data)
+          const nextJson = JSON.stringify(data.data)
+          if (nextJson !== lastStatusJsonRef.current) {
+            lastStatusJsonRef.current = nextJson
+            setStatus(data.data)
+          }
           setError(null)
         } else {
           setError(data.error || 'Failed to fetch status')
         }
       } catch {
         setError('Connection failed - is the agent running?')
+      } finally {
+        statusInFlightRef.current = false
       }
     }
 
     if (setupChecked && !showSetup) {
       fetchStatus()
-      const interval = setInterval(fetchStatus, 5000)
-      const timeInterval = setInterval(() => setTime(new Date()), 1000)
-
+      statusPollIntervalRef.current = setInterval(fetchStatus, pollIntervalMs)
       return () => {
-        clearInterval(interval)
-        clearInterval(timeInterval)
+        if (statusPollIntervalRef.current) {
+          clearInterval(statusPollIntervalRef.current)
+          statusPollIntervalRef.current = null
+        }
       }
     }
   }, [setupChecked, showSetup])
@@ -481,35 +507,7 @@ export default function App() {
     fetchCryptoAssets()
   }, [setupChecked, showSetup])
 
-  // Fetch index/exchange ticker snapshots for the ticker strip
-  useEffect(() => {
-    if (!setupChecked || showSetup) return
-    const fetchIndexCards = async () => {
-      const results = await Promise.allSettled(
-        INDEX_TICKERS.map(({ symbol }) =>
-          authFetch(`${API_BASE}/symbol-detail/${encodeURIComponent(symbol)}`).then((r) => r.json())
-        )
-      )
-      const next: Record<string, IndexCardData | null> = {}
-      results.forEach((result, i) => {
-        const { symbol } = INDEX_TICKERS[i]!
-        if (result.status !== 'fulfilled' || !result.value?.ok || !result.value?.data) {
-          next[symbol] = null
-          return
-        }
-        const d = result.value.data as SymbolDetail
-        const price =
-          d.bid_price && d.ask_price ? (d.bid_price + d.ask_price) / 2 : d.open || d.bid_price || d.ask_price || 0
-        const prev = d.previous_close ?? 0
-        const dailyChangePct = prev ? ((price - prev) / prev) * 100 : 0
-        next[symbol] = { price, dailyChangePct }
-      })
-      setIndexCards(next)
-    }
-    fetchIndexCards()
-    const interval = setInterval(fetchIndexCards, 60_000)
-    return () => clearInterval(interval)
-  }, [setupChecked, showSetup])
+  // Index ticker strip uses status.indexSnapshot from backend (KV-cached); no separate symbol-detail calls
 
   // Detect when index ticker strip overflows so we can enable marquee scroll
   useEffect(() => {
@@ -877,9 +875,7 @@ export default function App() {
             >
               [CONFIG]
             </button>
-            <span className="hud-value-sm font-mono">
-              {time.toLocaleTimeString('en-US', { hour12: false, timeZone: displayTimezone })}
-            </span>
+            <Clock timeZone={displayTimezone} />
           </div>
         </header>
 
