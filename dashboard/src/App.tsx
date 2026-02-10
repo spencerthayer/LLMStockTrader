@@ -1110,6 +1110,69 @@ export default function App() {
                         })
                       })()}
                     </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-hud-line/50 bg-hud-bg/30 font-medium">
+                        <td className="hud-label py-2 px-2">Total</td>
+                        <td className="hud-value-sm text-right py-2 px-2 hidden sm:table-cell">
+                          {positions.reduce((s, p) => s + p.qty, 0)}
+                        </td>
+                        <td className="hud-value-sm text-right py-2 px-2 hidden md:table-cell">
+                          {formatCurrency(positions.reduce((s, p) => s + p.market_value, 0))}
+                        </td>
+                        <td className={clsx(
+                          'hud-value-sm text-right py-2 px-2',
+                          (positions.reduce((s, p) => s + (p.unrealized_intraday_pl ?? 0), 0)) >= 0 ? 'text-hud-success' : 'text-hud-error'
+                        )}>
+                          {(() => {
+                            const sumToday = positions.reduce((s, p) => s + (p.unrealized_intraday_pl ?? 0), 0)
+                            const totalVal = positions.reduce((s, p) => s + p.market_value, 0)
+                            const pct = totalVal > 0 ? (sumToday / totalVal) * 100 : 0
+                            return (
+                              <>
+                                <div>{formatCurrency(sumToday)}</div>
+                                <div className="text-xs opacity-70">{formatPercent(pct)}</div>
+                              </>
+                            )
+                          })()}
+                        </td>
+                        <td className={clsx(
+                          'hud-value-sm text-right py-2 px-2 hidden sm:table-cell',
+                          positions.reduce((s, p) => s + p.unrealized_pl, 0) >= 0 ? 'text-hud-success' : 'text-hud-error'
+                        )}>
+                          {(() => {
+                            const sumPl = positions.reduce((s, p) => s + p.unrealized_pl, 0)
+                            const totalVal = positions.reduce((s, p) => s + p.market_value, 0)
+                            const costSum = positions.reduce((s, p) => s + (p.cost_basis ?? p.market_value - p.unrealized_pl), 0)
+                            const pct = costSum > 0 ? (sumPl / costSum) * 100 : 0
+                            return (
+                              <>
+                                <div>{formatCurrency(sumPl)}</div>
+                                <div className="text-xs opacity-70">{formatPercent(pct)}</div>
+                              </>
+                            )
+                          })()}
+                        </td>
+                        <td className="hud-value-sm text-right py-2 px-2 hidden lg:table-cell text-hud-text-dim">
+                          100%
+                        </td>
+                        <td className="py-2 px-2">
+                          <div className="flex justify-center">
+                            {(() => {
+                              const sumToday = positions.reduce((s, p) => s + (p.unrealized_intraday_pl ?? 0), 0)
+                              const up = sumToday > 0
+                              const down = sumToday < 0
+                              return (
+                                <>
+                                  {up && <span className="text-hud-success text-sm leading-none" aria-hidden>▲</span>}
+                                  {down && <span className="text-hud-error text-sm leading-none" aria-hidden>▼</span>}
+                                  {!up && !down && <span className="text-hud-text-dim text-sm leading-none" aria-hidden>—</span>}
+                                </>
+                              )
+                            })()}
+                          </div>
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               )}
