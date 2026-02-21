@@ -1,12 +1,12 @@
 ⚠️ **Warning:** This software is provided for educational and informational purposes only. Nothing in this repository constitutes financial, investment, legal, or tax advice.
 
-# MAHORAGA
+# LLM Stock Trader
 
-An autonomous, LLM-powered trading agent that runs 24/7 on Cloudflare Workers. (This is highly modified.)
+An autonomous, LLM-powered trading agent that runs 24/7 on Cloudflare Workers. (This is highly modified for of [MAHORAGA](https://mahoraga.dev/).
 
 [![Discord](https://img.shields.io/discord/1467592472158015553?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/vMFnHe2YBh)
 
-MAHORAGA monitors social sentiment from StockTwits and Reddit, uses AI (OpenAI, Anthropic, Google, xAI, DeepSeek via AI SDK, or 300+ models via OpenRouter) to analyze signals, and executes trades through Alpaca. It runs as a Cloudflare Durable Object with persistent state, automatic restarts, and 24/7 crypto trading support.
+LLM Stock Trader monitors social sentiment from StockTwits and Reddit, uses AI (OpenAI, Anthropic, Google, xAI, DeepSeek via AI SDK, or 300+ models via OpenRouter) to analyze signals, and executes trades through Alpaca. It runs as a Cloudflare Durable Object with persistent state, automatic restarts, and 24/7 crypto trading support.
 
 <img width="1278" height="957" alt="dashboard" src="https://github.com/user-attachments/assets/56473ab6-e2c6-45fc-9e32-cf85e69f1a2d" />
 
@@ -34,8 +34,8 @@ MAHORAGA monitors social sentiment from StockTwits and Reddit, uses AI (OpenAI, 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/ygwyg/MAHORAGA.git
-cd mahoraga
+git clone https://github.com/ygwyg/LLM Stock Trader.git
+cd LLM Stock Trader
 npm install
 cd dashboard && npm install && cd ..
 ```
@@ -44,7 +44,7 @@ cd dashboard && npm install && cd ..
 
 ```bash
 # Create D1 database
-npx wrangler d1 create mahoraga-db
+npx wrangler d1 create LLM Stock Trader-db
 # Copy the database_id to wrangler.jsonc
 
 # Create KV namespace
@@ -52,7 +52,7 @@ npx wrangler kv namespace create CACHE
 # Copy the id to wrangler.jsonc
 
 # Run migrations
-npx wrangler d1 migrations apply mahoraga-db
+npx wrangler d1 migrations apply LLM Stock Trader-db
 ```
 
 ### 3. Set secrets
@@ -64,7 +64,7 @@ npx wrangler secret put ALPACA_API_SECRET
 
 # API Authentication - generate a secure random token (64+ chars recommended)
 # Example: openssl rand -base64 48
-npx wrangler secret put MAHORAGA_API_TOKEN
+npx wrangler secret put LLM Stock Trader_API_TOKEN
 
 # LLM Provider (choose one mode)
 npx wrangler secret put LLM_PROVIDER  # "openai-raw" (default), "openrouter", "ai-sdk", or "cloudflare-gateway"
@@ -105,27 +105,27 @@ All API endpoints require authentication via Bearer token:
 
 ```bash
 # Set your API token as an env var for convenience
-export MAHORAGA_TOKEN="your-api-token"
+export LLM Stock Trader_TOKEN="your-api-token"
 
 # Enable the agent
-curl -H "Authorization: Bearer $MAHORAGA_TOKEN" \
-  https://mahoraga.bernardoalmeida2004.workers.dev/agent/enable
+curl -H "Authorization: Bearer $LLM Stock Trader_TOKEN" \
+  https://LLM Stock Trader.bernardoalmeida2004.workers.dev/agent/enable
 ```
 
 ### 6. Monitor
 
 ```bash
 # Check status
-curl -H "Authorization: Bearer $MAHORAGA_TOKEN" \
-  https://mahoraga.bernardoalmeida2004.workers.dev/agent/status
+curl -H "Authorization: Bearer $LLM Stock Trader_TOKEN" \
+  https://LLM Stock Trader.bernardoalmeida2004.workers.dev/agent/status
 
 # View logs
-curl -H "Authorization: Bearer $MAHORAGA_TOKEN" \
-  https://mahoraga.bernardoalmeida2004.workers.dev/agent/logs
+curl -H "Authorization: Bearer $LLM Stock Trader_TOKEN" \
+  https://LLM Stock Trader.bernardoalmeida2004.workers.dev/agent/logs
 
 # Emergency kill switch (uses separate KILL_SWITCH_SECRET)
 curl -H "Authorization: Bearer $KILL_SWITCH_SECRET" \
-  https://mahoraga.bernardoalmeida2004.workers.dev/agent/kill
+  https://LLM Stock Trader.bernardoalmeida2004.workers.dev/agent/kill
 
 # Run dashboard locally (or use ./start for both backend + dashboard)
 cd dashboard && npm install && npm run dev
@@ -141,7 +141,7 @@ cp .env.example .dev.vars        # Edit with your API keys
 cp wrangler.example.jsonc wrangler.jsonc
 
 # Auto-authenticate the dashboard (optional, avoids manual token entry)
-echo "VITE_MAHORAGA_API_TOKEN=$(grep MAHORAGA_API_TOKEN .dev.vars | cut -d= -f2-)" > dashboard/.env.development
+echo "VITE_LLM Stock Trader_API_TOKEN=$(grep LLM Stock Trader_API_TOKEN .dev.vars | cut -d= -f2-)" > dashboard/.env.development
 
 # Run local D1 migrations
 npm run db:migrate
@@ -152,7 +152,7 @@ npm run db:migrate
 
 This starts the Wrangler backend on `http://localhost:8787` and the React dashboard on `http://localhost:3000`. Press Ctrl+C to stop both.
 
-The `dashboard/.env.development` file auto-injects your API token so the dashboard authenticates without manual entry. Without it, you'll need to paste your `MAHORAGA_API_TOKEN` into the dashboard login screen on first visit.
+The `dashboard/.env.development` file auto-injects your API token so the dashboard authenticates without manual entry. Without it, you'll need to paste your `LLM Stock Trader_API_TOKEN` into the dashboard login screen on first visit.
 
 ```bash
 ./start              # Start both backend + dashboard
@@ -189,13 +189,13 @@ Fetches all 300+ OpenRouter models with pricing and writes them to `scripts/open
 ### Enable the agent
 
 ```bash
-curl -H "Authorization: Bearer $MAHORAGA_TOKEN" \
+curl -H "Authorization: Bearer $LLM Stock Trader_TOKEN" \
   http://localhost:8787/agent/enable
 ```
 
 ## Customizing the Harness
 
-The main trading logic is in `src/durable-objects/mahoraga-harness.ts`. It's documented with markers to help you find what to modify:
+The main trading logic is in `src/durable-objects/LLM Stock Trader-harness.ts`. It's documented with markers to help you find what to modify:
 
 | Marker | Meaning |
 |--------|---------|
@@ -228,7 +228,7 @@ See `docs/harness.html` for detailed customization guide.
 
 ### LLM Provider Configuration
 
-MAHORAGA supports multiple LLM providers via four modes:
+LLM Stock Trader supports multiple LLM providers via four modes:
 
 | Mode | Description | Required Env Vars |
 |------|-------------|-------------------|
@@ -241,7 +241,7 @@ MAHORAGA supports multiple LLM providers via four modes:
 
 OpenRouter gives you access to 300+ models (OpenAI, Anthropic, Google, Meta, DeepSeek, xAI, and more) through a single API key. Get your key at [openrouter.ai/keys](https://openrouter.ai/keys).
 
-> **Free model support:** MAHORAGA automatically detects free-tier models (model IDs containing `:free` or `/free`) and applies 8-second rate limiting between LLM calls to respect free-tier rate limits. If a model does not support system prompts (e.g., some Gemma variants via the `openrouter/free` endpoint), MAHORAGA automatically retries by converting system instructions into user message prefixes. Cost tracking correctly reports `$0.00 (free)` for these models.
+> **Free model support:** LLM Stock Trader automatically detects free-tier models (model IDs containing `:free` or `/free`) and applies 8-second rate limiting between LLM calls to respect free-tier rate limits. If a model does not support system prompts (e.g., some Gemma variants via the `openrouter/free` endpoint), LLM Stock Trader automatically retries by converting system instructions into user message prefixes. Cost tracking correctly reports `$0.00 (free)` for these models.
 
 ```bash
 # .dev.vars (local) or wrangler secrets (production)
@@ -294,7 +294,7 @@ npx wrangler secret put ANTHROPIC_API_KEY # Your Anthropic API key
 
 ## Sentiment Analysis
 
-MAHORAGA gathers social sentiment from multiple sources in parallel. The core pipeline requires **no API keys** — StockTwits and Reddit are public APIs.
+LLM Stock Trader gathers social sentiment from multiple sources in parallel. The core pipeline requires **no API keys** — StockTwits and Reddit are public APIs.
 
 ### Sources
 
@@ -407,7 +407,7 @@ Notifications are **rate-limited to one per symbol every 30 minutes** to prevent
 2. Copy the webhook URL
 3. Set the secret: `npx wrangler secret put DISCORD_WEBHOOK_URL`
 
-All embeds include a footer: *"MAHORAGA • Not financial advice • DYOR"*
+All embeds include a footer: *"LLM Stock Trader • Not financial advice • DYOR"*
 
 ## API Endpoints
 
@@ -428,10 +428,10 @@ All embeds include a footer: *"MAHORAGA • Not financial advice • DYOR"*
 
 ### API Authentication (Required)
 
-All `/agent/*` endpoints require Bearer token authentication using `MAHORAGA_API_TOKEN`:
+All `/agent/*` endpoints require Bearer token authentication using `LLM Stock Trader_API_TOKEN`:
 
 ```bash
-curl -H "Authorization: Bearer $MAHORAGA_TOKEN" https://mahoraga.bernardoalmeida2004.workers.dev/agent/status
+curl -H "Authorization: Bearer $LLM Stock Trader_TOKEN" https://LLM Stock Trader.bernardoalmeida2004.workers.dev/agent/status
 ```
 
 Generate a secure token: `openssl rand -base64 48`
@@ -441,7 +441,7 @@ Generate a secure token: `openssl rand -base64 48`
 The `/agent/kill` endpoint uses a separate `KILL_SWITCH_SECRET` for emergency shutdown:
 
 ```bash
-curl -H "Authorization: Bearer $KILL_SWITCH_SECRET" https://mahoraga.bernardoalmeida2004.workers.dev/agent/kill
+curl -H "Authorization: Bearer $KILL_SWITCH_SECRET" https://LLM Stock Trader.bernardoalmeida2004.workers.dev/agent/kill
 ```
 
 This immediately disables the agent, cancels all alarms, and clears the signal cache.
@@ -457,8 +457,8 @@ For additional security with SSO/email verification, set up Cloudflare Access:
 # 2. Run the setup script
 CLOUDFLARE_API_TOKEN=your-token \
 CLOUDFLARE_ACCOUNT_ID=your-account-id \
-MAHORAGA_WORKER_URL=https://mahoraga.your-subdomain.workers.dev \
-MAHORAGA_ALLOWED_EMAILS=you@example.com \
+LLM Stock Trader_WORKER_URL=https://LLM Stock Trader.your-subdomain.workers.dev \
+LLM Stock Trader_ALLOWED_EMAILS=you@example.com \
 npm run setup:access
 ```
 
@@ -467,14 +467,14 @@ This creates a Cloudflare Access Application with email verification or One-Time
 ## Project Structure
 
 ```
-mahoraga/
+LLM Stock Trader/
 ├── start                       # Dev launcher (backend + dashboard)
 ├── wrangler.jsonc              # Cloudflare Workers config
 ├── .dev.vars                   # Local secrets (gitignored)
 ├── src/
 │   ├── index.ts                # Entry point
 │   ├── durable-objects/
-│   │   ├── mahoraga-harness.ts # THE HARNESS - customize this!
+│   │   ├── LLM Stock Trader-harness.ts # THE HARNESS - customize this!
 │   │   └── session.ts
 │   ├── mcp/                    # MCP server & tools
 │   ├── policy/                 # Trade validation
